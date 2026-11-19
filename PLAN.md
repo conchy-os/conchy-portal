@@ -520,3 +520,16 @@ _(заполняет исполнитель: дата, фаза, решение/
   - PickColor: «no color picked» от wm → ответ `1` (отмена), прочие ошибки → `2`.
   - Разрешение для неинтерактивного снимка: **фронтенд xdp сам** зовёт `impl.Access` (диалог «разрешить скриншот?») и только потом бэкенд Screenshot. Значит, до Фазы 5 это делает gtk-Access (на нашем conf `Access=gtk`), а флаг `permission_store_checked` демону проверять не нужно. Пункт плана «после Фазы 5 спрашивать через Access-диалог шелла» выполняется автоматически переключением `Access=conchy`.
   - e2e: `scripts/e2e/screenshot.py` через настоящий xdp (интерактивный снимок, отмена, PickColor) — зелёный.
+- 2026-11-19 · Фаза 3 · Решения и замеры:
+  - **GPUI останавливает цикл событий, когда на Wayland не осталось окон** (`gpui-0.2.2/src/platform/linux/wayland/client.rs:387`) — «вечного» окна-less резидента нет. Решение: по умолчанию хост поднимается D-Bus-активацией (`org.conchy.Portal.FilesHost.service` → `conchy-files --service`) на каждый запрос, процесс выходит после закрытия окна (100 мс паузы на выходе, чтобы ответ D-Bus долетел). Для тёплого режима есть `conchy-files --resident` с невидимым окном-якорем `conchy-files-keepalive` (+правило wm; `show:false` GPUI на Wayland игнорирует, на Hyprland окно видно как тайл — поэтому режим не по умолчанию), выход при простое 15 мин (`CONCHY_FILES_IDLE_SECS`).
+  - Хост занимает имя `org.conchy.Portal.FilesHost` **до** `Application::new()` (инициализация GPUI долгая), запросы копятся в канале — иначе активация не укладывалась в 2 с.
+  - `FilePickResult` несёт сырые пути (`paths: aay`), `file://` с percent-encoding собирает демон (`uri.rs`), поэтому encode в conchy-files не понадобился.
+  - SaveFiles: к выбранной папке дописываются имена файлов; занятое имя получает суффикс `a (1).txt` без диалога (спецификация это разрешает).
+  - `writable` в ответе всегда `true` (как у xdg-desktop-portal-gnome: иначе песочница не сможет писать в файл, выбранный в «Открыть»).
+  - Маски фильтров сравниваются без учёта регистра; MIME — с подклассами: в `MimeDb` добавлен `is_a` (по `mime/subclasses` + правила `text/*`, `*+xml`, `octet-stream`).
+  - Пикер скрывает файлы фильтром на уровне `rebuild_visible` (папки видны всегда; в режиме «папка» файлы скрыты). Операции изменения файлов в пикере блокируются (`run_cmd`), из контекстного меню остаются выбор/навигация/«создать папку».
+  - Нет клиентского таймаута у вызова `Pick`; ограничение даёт dbus-daemon (`reply_timeout` шины, по умолчанию 5 мин на session bus не стоит, но зависит от конфига шины).
+  - `Request.Close` → `FilesHost.Cancel(id)` → окно закрывается, ответ `1`.
+  - Последняя папка приложения: `~/.local/state/conchy/files-picker.kdl` (`folder "app.id" "/путь"`, не больше 64 записей).
+  - Бюджеты: первый кадр при холодном старте (debug-сборка, включая активацию) ~0.77 с; release и тёплый режим не измерялись (release gpui не собирал). e2e `scripts/e2e/filechooser.py` (xdp+демон+conchy-files, клавиши через `hyprctl dispatch hl.dsp.send_shortcut`): выбор с фильтром, Esc, Save, перезапись — зелёный.
+  - Ветки: conchy-files `feat/portal-picker`, conchy-wm `feat/portal-conchy` (правила окон + conf), conchy-shot `feat/portal-output`, conchy-config `feat/appearance-schema`. conchy-files зависит от `../conchy-portal/crates/proto` по path.

@@ -8,6 +8,10 @@ mkdir -p "$PRIVBUS_DIR/services"
 sed "s|^Exec=.*|Exec=$root/target/$profile/xdg-desktop-portal-conchy|" \
   "$root/data/org.freedesktop.impl.portal.desktop.conchy.service" \
   > "$PRIVBUS_DIR/services/org.freedesktop.impl.portal.desktop.conchy.service"
+# Хост conchy-files (FileChooser/AppChooser): бинарь можно подменить CONCHY_FILES_BIN.
+files_bin="${CONCHY_FILES_BIN:-$root/../conchy-files/target/$profile/conchy-files}"
+sed "s|^Exec=.*|Exec=$files_bin --service|" "$root/data/org.conchy.Portal.FilesHost.service" \
+  > "$PRIVBUS_DIR/services/org.conchy.Portal.FilesHost.service"
 cat > "$PRIVBUS_DIR/bus.conf" <<CONF
 <busconfig>
   <type>session</type>

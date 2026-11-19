@@ -58,6 +58,25 @@ def serve(conn, name, path, xml, handler):
     Gio.bus_own_name_on_connection(conn, name, Gio.BusNameOwnerFlags.NONE, None, None)
 
 
+def after(ms, fn):
+    """Выполнить fn через ms миллисекунд внутри главного цикла (для hyprctl и т. п.)."""
+    GLib.timeout_add(ms, lambda: (fn(), False)[1])
+
+
+def hypr_key(key, cls="conchy-files-picker"):
+    """Нажатие клавиши в окне через Hyprland (dev-машина; в Conchy-сессии заменить на ipc wm)."""
+    import subprocess
+    subprocess.run(["hyprctl", "dispatch",
+                    f'hl.dsp.send_shortcut({{ mods = "", key = "{key}", window = "class:^({cls})$" }})'],
+                   stdout=subprocess.DEVNULL)
+
+
+def hypr_has(cls):
+    import json, subprocess
+    out = subprocess.run(["hyprctl", "clients", "-j"], capture_output=True, text=True).stdout
+    return any(c["class"] == cls for c in json.loads(out))
+
+
 def pump(ms=300):
     loop = GLib.MainLoop()
     GLib.timeout_add(ms, loop.quit)

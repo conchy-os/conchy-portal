@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=org.conchy.Portal.FilesHost
+Exec=/usr/bin/conchy-files --service
