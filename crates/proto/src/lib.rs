@@ -173,3 +173,38 @@ pub mod access {
         pub choices: Vec<ChoiceSelection>,
     }
 }
+
+/// Типы выбора источника ScreenCast (демон ↔ `ShellHost.PickCastSources`).
+pub mod cast {
+    use serde::{Deserialize, Serialize};
+    use zvariant::Type;
+
+    /// Тип источника в `AvailableSourceTypes` / `types` портала.
+    pub const SOURCE_MONITOR: u32 = 1;
+    pub const SOURCE_WINDOW: u32 = 2;
+
+    #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+    pub struct CastPickRequest {
+        pub app_id: String,
+        pub parent_window: String,
+        /// Битовая маска разрешённых типов (`SOURCE_*`).
+        pub types: u32,
+        pub multiple: bool,
+    }
+
+    /// Выбранный источник: монитор (по имени выхода) или окно (по id из `Shell.Introspect`).
+    /// `title`/`app_id` окна нужны демону для restore-токена.
+    #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+    pub struct CastSource {
+        pub kind: u32,
+        pub connector: String,
+        pub window_id: u64,
+        pub title: String,
+        pub app_id: String,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+    pub struct CastPickResult {
+        pub sources: Vec<CastSource>,
+    }
+}

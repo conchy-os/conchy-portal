@@ -8,6 +8,8 @@ mod hosts;
 mod opts;
 mod request;
 mod screenshot;
+mod mutter;
+mod screencast;
 mod session;
 mod settings;
 mod sources;
@@ -47,6 +49,8 @@ async fn main() -> anyhow::Result<()> {
         .context("не удалось зарегистрировать AppChooser")?
         .serve_at(PORTAL_OBJECT_PATH, access::Access { activate: true })
         .context("не удалось зарегистрировать Access")?
+        .serve_at(PORTAL_OBJECT_PATH, screencast::ScreenCast::new(true))
+        .context("не удалось зарегистрировать ScreenCast")?
         .name(DAEMON_BUS_NAME)
         .context("некорректное имя шины")?
         .build()
