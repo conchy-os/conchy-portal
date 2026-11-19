@@ -40,3 +40,40 @@ pub trait MutterStream {
 pub trait ShellIntrospect {
     fn get_windows(&self) -> zbus::Result<HashMap<u64, HashMap<String, OwnedValue>>>;
 }
+
+/// `org.freedesktop.ScreenSaver` в conchy-wm (idle-inhibit).
+#[proxy(
+    interface = "org.freedesktop.ScreenSaver",
+    default_service = "org.freedesktop.ScreenSaver",
+    default_path = "/org/freedesktop/ScreenSaver"
+)]
+pub trait ScreenSaver {
+    fn inhibit(&self, application_name: &str, reason_for_inhibit: &str) -> zbus::Result<u32>;
+    fn un_inhibit(&self, cookie: u32) -> zbus::Result<()>;
+}
+
+/// Серверы уведомлений (шелл Conchy) — `org.freedesktop.Notifications`.
+#[proxy(
+    interface = "org.freedesktop.Notifications",
+    default_service = "org.freedesktop.Notifications",
+    default_path = "/org/freedesktop/Notifications"
+)]
+pub trait Notifications {
+    #[allow(clippy::too_many_arguments)]
+    fn notify(
+        &self,
+        app_name: &str,
+        replaces_id: u32,
+        app_icon: &str,
+        summary: &str,
+        body: &str,
+        actions: &[&str],
+        hints: HashMap<&str, Value<'_>>,
+        expire_timeout: i32,
+    ) -> zbus::Result<u32>;
+    fn close_notification(&self, id: u32) -> zbus::Result<()>;
+    #[zbus(signal)]
+    fn action_invoked(&self, id: u32, action_key: String) -> zbus::Result<()>;
+    #[zbus(signal)]
+    fn notification_closed(&self, id: u32, reason: u32) -> zbus::Result<()>;
+}

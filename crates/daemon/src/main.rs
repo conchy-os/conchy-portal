@@ -5,10 +5,12 @@ mod access;
 mod app_chooser;
 mod file_chooser;
 mod hosts;
+mod inhibit;
 mod opts;
 mod request;
 mod screenshot;
 mod mutter;
+mod notification;
 mod screencast;
 mod session;
 mod settings;
@@ -37,6 +39,7 @@ async fn main() -> anyhow::Result<()> {
     let dir = sources::config_dir();
     store.replace(sources::load_all(&dir, &settings::Map::new()));
 
+    let notification_iface = notification::Notification::default();
     let conn = zbus::connection::Builder::session()
         .context("нет сессионной шины")?
         .serve_at(PORTAL_OBJECT_PATH, settings::Settings::new(store.clone()))
@@ -51,6 +54,10 @@ async fn main() -> anyhow::Result<()> {
         .context("не удалось зарегистрировать Access")?
         .serve_at(PORTAL_OBJECT_PATH, screencast::ScreenCast::new(true))
         .context("не удалось зарегистрировать ScreenCast")?
+        .serve_at(PORTAL_OBJECT_PATH, inhibit::Inhibit)
+        .context("не удалось зарегистрировать Inhibit")?
+        .serve_at(PORTAL_OBJECT_PATH, notification_iface.clone())
+        .context("не удалось зарегистрировать Notification")?
         .name(DAEMON_BUS_NAME)
         .context("некорректное имя шины")?
         .build()
@@ -60,6 +67,16 @@ async fn main() -> anyhow::Result<()> {
         .object_server()
         .interface::<_, settings::Settings>(PORTAL_OBJECT_PATH)
         .await?;
+    {
+        let iface = conn.object_server().interface::<_, notification::Notification>(PORTAL_OBJECT_PATH).await?;
+        let conn = conn.clone();
+        let n = notification_iface.clone();
+        tokio::spawn(async move {
+            if let Err(e) = n.forward_signals(conn, iface).await {
+                tracing::warn!("ActionInvoked не пробрасывается: {e}");
+            }
+        });
+    }
     let _watcher = sources::spawn_watcher(dir, store, iface).context("не запустить наблюдатель конфигов")?;
     info!(
         name = DAEMON_BUS_NAME,

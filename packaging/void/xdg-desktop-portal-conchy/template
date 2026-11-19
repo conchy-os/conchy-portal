@@ -1,0 +1,28 @@
+# Template file for 'xdg-desktop-portal-conchy' (Void Linux, xbps-src). НЕ ПРОВЕРЕН сборкой.
+#
+# Замечание: крейт `xdg-desktop-portal-conchy` зависит от `conchy-config` по path
+# (`../conchy-config`), поэтому дистфайл должен содержать обе директории рядом (или
+# conchy-config нужно опубликовать/вендорить отдельно). Контрольную сумму подставить после релиза.
+pkgname=xdg-desktop-portal-conchy
+version=0.1.0
+revision=1
+build_style=cargo
+make_build_args="-p xdg-desktop-portal-conchy"
+make_install_args="-p xdg-desktop-portal-conchy"
+hostmakedepends="pkg-config"
+depends="xdg-desktop-portal dbus conchy-files conchy-shell conchy-shot"
+short_desc="xdg-desktop-portal backend for Conchy OS (Rust, no GTK/Qt)"
+maintainer="Conchy OS Team <team@conchy-os.org>"
+license="GPL-3.0-or-later"
+homepage="https://github.com/conchy-os/conchy-portal"
+distfiles="${homepage}/archive/v${version}.tar.gz"
+checksum=0000000000000000000000000000000000000000000000000000000000000000
+
+do_install() {
+	# Бинарь демона — в libexec, как у остальных xdg-desktop-portal-* на Void.
+	vinstall target/${RUST_TARGET}/release/xdg-desktop-portal-conchy 755 usr/libexec
+	vinstall data/conchy.portal 644 usr/share/xdg-desktop-portal/portals
+	vinstall data/conchy-portals.conf 644 usr/share/xdg-desktop-portal
+	vinstall data/org.freedesktop.impl.portal.desktop.conchy.service 644 usr/share/dbus-1/services
+	vinstall data/org.conchy.Portal.FilesHost.service 644 usr/share/dbus-1/services
+}
