@@ -23,6 +23,7 @@ pub struct Inhibit;
 
 #[interface(name = "org.freedesktop.impl.portal.Inhibit")]
 impl Inhibit {
+    #[allow(clippy::too_many_arguments)]
     async fn inhibit(
         &self,
         handle: ObjectPath<'_>,
@@ -61,11 +62,10 @@ impl Inhibit {
                 None
             };
             let _ = cancel.await; // Request.Close (или падение демона)
-            if let Some((p, cookie)) = held {
-                if let Err(e) = p.un_inhibit(cookie).await {
+            if let Some((p, cookie)) = held
+                && let Err(e) = p.un_inhibit(cookie).await {
                     warn!("ScreenSaver.UnInhibit: {e}");
                 }
-            }
         });
     }
 

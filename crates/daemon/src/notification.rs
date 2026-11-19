@@ -151,11 +151,10 @@ impl Notification {
             s.by_fdo.remove(&k);
             Some(k)
         });
-        if let Some(fdo_id) = fdo_id {
-            if let Ok(p) = NotificationsProxy::new(conn).await {
+        if let Some(fdo_id) = fdo_id
+            && let Ok(p) = NotificationsProxy::new(conn).await {
                 let _ = p.close_notification(fdo_id).await;
             }
-        }
     }
 
     #[zbus(signal)]
@@ -200,13 +199,11 @@ impl Notification {
                     }
                 }
                 Some(sig) = closed.next() => {
-                    if let Ok(args) = sig.args() {
-                        if let Ok(mut s) = self.state.lock() {
-                            if let Some(sent) = s.by_fdo.remove(&args.id) {
+                    if let Ok(args) = sig.args()
+                        && let Ok(mut s) = self.state.lock()
+                            && let Some(sent) = s.by_fdo.remove(&args.id) {
                                 s.by_key.remove(&(sent.app_id, sent.id));
                             }
-                        }
-                    }
                 }
                 else => return Ok(()),
             }
