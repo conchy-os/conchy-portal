@@ -1,0 +1,28 @@
+[package]
+name = "xdg-desktop-portal-conchy"
+description = "Headless-демон org.freedesktop.impl.portal.desktop.conchy"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "xdg-desktop-portal-conchy"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+conchy-config.workspace = true
+kdl.workspace = true
+conchy-portal-proto.workspace = true
+futures-util.workspace = true
+notify.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+zbus.workspace = true
+zvariant.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

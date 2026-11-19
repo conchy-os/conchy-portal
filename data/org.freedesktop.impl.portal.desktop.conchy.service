@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=org.freedesktop.impl.portal.desktop.conchy
+Exec=/usr/libexec/xdg-desktop-portal-conchy

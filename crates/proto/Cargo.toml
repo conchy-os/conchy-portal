@@ -1,0 +1,10 @@
+[package]
+name = "conchy-portal-proto"
+description = "Типы и константы протокола между демоном портала и хостами UI (без zbus/tokio/gpui)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+zvariant.workspace = true
