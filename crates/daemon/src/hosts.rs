@@ -2,6 +2,7 @@
 
 use std::time::Duration;
 
+use conchy_portal_proto::apps::{AppChooseRequest, AppChooseResult};
 use conchy_portal_proto::files::{FilePickRequest, FilePickResult};
 use tracing::{debug, warn};
 use zbus::{Connection, fdo, proxy};
@@ -20,6 +21,8 @@ const ACTIVATION_TIMEOUT: Duration = Duration::from_secs(2);
 )]
 pub trait FilesHost {
     fn pick(&self, id: &str, req: &FilePickRequest) -> zbus::Result<(u32, FilePickResult)>;
+    fn choose_app(&self, id: &str, req: &AppChooseRequest) -> zbus::Result<(u32, AppChooseResult)>;
+    fn update_choices(&self, id: &str, choices: &[String]) -> zbus::Result<()>;
     fn cancel(&self, id: &str) -> zbus::Result<()>;
 }
 

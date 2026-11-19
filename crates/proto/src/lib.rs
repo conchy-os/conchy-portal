@@ -116,3 +116,31 @@ pub mod files {
         pub writable: bool,
     }
 }
+
+/// Типы запросов AppChooser.
+pub mod apps {
+    use serde::{Deserialize, Serialize};
+    use zvariant::Type;
+
+    /// Разобранный демоном вызов `ChooseApplication`. `choices` — id приложений
+    /// (desktop-id без `.desktop`), в порядке предпочтения.
+    #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+    pub struct AppChooseRequest {
+        pub app_id: String,
+        pub parent_window: String,
+        pub choices: Vec<String>,
+        pub last_choice: String,
+        pub modal: bool,
+        pub content_type: String,
+        pub uri: String,
+        pub filename: String,
+        pub activation_token: String,
+    }
+
+    /// Ответ хоста: id выбранного приложения без `.desktop` (пусто — не выбрано).
+    #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+    pub struct AppChooseResult {
+        pub choice: String,
+        pub activation_token: String,
+    }
+}
