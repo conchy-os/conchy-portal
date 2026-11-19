@@ -11,6 +11,15 @@ mkdir -p "$E2E_DIR/portals" "$E2E_DIR/config/conchy" "$E2E_DIR/config/xdg-deskto
 cp /usr/share/xdg-desktop-portal/portals/*.portal "$E2E_DIR/portals/"
 cp "$root/data/conchy.portal" "$E2E_DIR/portals/"
 cp "$root/data/conchy-portals.conf" "$E2E_DIR/config/xdg-desktop-portal/"
+# Фейковый conchy-shot: пишет «PNG» в --portal-output (или выходит с кодом 1, если FAKE_SHOT_CANCEL).
+cat > "$E2E_DIR/fake-conchy-shot" <<'FAKE'
+#!/bin/sh
+while [ $# -gt 0 ]; do [ "$1" = --portal-output ] && out="$2"; shift; done
+[ -e "$(dirname "$0")/cancel" ] && exit 1
+printf '\211PNG\r\n\032\nfake' > "$out"
+FAKE
+chmod +x "$E2E_DIR/fake-conchy-shot"
+export CONCHY_SHOT_BIN="$E2E_DIR/fake-conchy-shot"
 # Окружение — до запуска dbus-daemon: активируемые сервисы наследуют его.
 export XDG_CONFIG_HOME="$E2E_DIR/config" XDG_DESKTOP_PORTAL_DIR="$E2E_DIR/portals" XDG_CURRENT_DESKTOP=conchy
 source "$root/scripts/private-bus.sh" "$profile"

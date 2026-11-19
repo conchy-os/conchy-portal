@@ -512,3 +512,11 @@ _(заполняет исполнитель: дата, фаза, решение/
   - `cursor-theme/size` — из блока `cursor { xcursor-theme; xcursor-size }` в `wm.kdl`; `reduced-motion` = `animations { off }` в `wm.kdl` или оверрайд.
   - Замер: `SettingChanged` после записи `theme.kdl` — перезагрузка 1.6 мс + дебаунс 30 мс (e2e через xdp).
   - Проверено через настоящий xdp: `ReadOne`, `Read`, `SettingChanged`. Firefox/libadwaita на dev-машине (Hyprland) не проверялись.
+- 2026-11-19 · Фаза 2 · Решения:
+  - Неинтерактивный снимок: `org.gnome.Shell.Screenshot.Screenshot` в conchy-wm; параметр `filename` wm игнорирует и пишет в настроенный каталог скриншотов (`make_screenshot_path`), демон отдаёт именно этот путь как `file://` URI (копирования нет).
+  - Интерактивный/`target=Area`: `conchy-shot area --portal-output <файл>` (новый флаг, ветка `feat/portal-output` в conchy-shot): сохраняет только PNG, без буфера обмена и уведомления; код 0 — сохранено, 1 — отмена. Файлы кладутся в `$XDG_RUNTIME_DIR/conchy-portal/`. Бинарь переопределяется `CONCHY_SHOT_BIN`.
+  - `Request.Close` во время `conchy-shot` → `kill_on_drop` (SIGKILL, а не SIGTERM как в плане: для layer-shell-клиента разницы нет, зато нет гонки).
+  - `AvailableTargets = 1|4` (экран + область); окно/активное окно не поддержаны. Версия интерфейса 3 (по XML в системе).
+  - PickColor: «no color picked» от wm → ответ `1` (отмена), прочие ошибки → `2`.
+  - Разрешение для неинтерактивного снимка: **фронтенд xdp сам** зовёт `impl.Access` (диалог «разрешить скриншот?») и только потом бэкенд Screenshot. Значит, до Фазы 5 это делает gtk-Access (на нашем conf `Access=gtk`), а флаг `permission_store_checked` демону проверять не нужно. Пункт плана «после Фазы 5 спрашивать через Access-диалог шелла» выполняется автоматически переключением `Access=conchy`.
+  - e2e: `scripts/e2e/screenshot.py` через настоящий xdp (интерактивный снимок, отмена, PickColor) — зелёный.

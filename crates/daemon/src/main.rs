@@ -1,10 +1,13 @@
 //! `xdg-desktop-portal-conchy` — headless-маршрутизатор вызовов `xdg-desktop-portal`.
 //! Без GPUI и без UI: отвечает сам (Settings) или передаёт задачу хосту UI.
 
+mod opts;
 mod request;
+mod screenshot;
 mod session;
 mod settings;
 mod sources;
+mod uri;
 #[cfg(test)]
 mod testutil;
 
@@ -32,6 +35,8 @@ async fn main() -> anyhow::Result<()> {
         .context("нет сессионной шины")?
         .serve_at(PORTAL_OBJECT_PATH, settings::Settings::new(store.clone()))
         .context("не удалось зарегистрировать Settings")?
+        .serve_at(PORTAL_OBJECT_PATH, screenshot::Screenshot::from_env())
+        .context("не удалось зарегистрировать Screenshot")?
         .name(DAEMON_BUS_NAME)
         .context("некорректное имя шины")?
         .build()
