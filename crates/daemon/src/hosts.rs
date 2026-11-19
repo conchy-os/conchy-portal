@@ -2,6 +2,7 @@
 
 use std::time::Duration;
 
+use conchy_portal_proto::access::{AccessRequest, AccessResult};
 use conchy_portal_proto::apps::{AppChooseRequest, AppChooseResult};
 use conchy_portal_proto::files::{FilePickRequest, FilePickResult};
 use tracing::{debug, warn};
@@ -47,4 +48,16 @@ pub async fn ensure_host(conn: &Connection, name: &'static str) -> Result<(), St
         }
         Err(_) => Err(format!("{name} не запустился за {ACTIVATION_TIMEOUT:?}")),
     }
+}
+
+/// `org.conchy.Portal.ShellHost` (в conchy-shell): диалоги разрешений и пикер ScreenCast.
+/// Как и у [`FilesHost`], без клиентского таймаута.
+#[proxy(
+    interface = "org.conchy.Portal.ShellHost",
+    default_service = "org.conchy.Portal.ShellHost",
+    default_path = "/org/conchy/Portal"
+)]
+pub trait ShellHost {
+    fn access(&self, id: &str, req: &AccessRequest) -> zbus::Result<(u32, AccessResult)>;
+    fn cancel(&self, id: &str) -> zbus::Result<()>;
 }

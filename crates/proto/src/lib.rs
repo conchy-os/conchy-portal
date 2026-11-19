@@ -144,3 +144,32 @@ pub mod apps {
         pub activation_token: String,
     }
 }
+
+/// Типы запросов Access (диалог разрешений).
+pub mod access {
+    use crate::files::{Choice, ChoiceSelection};
+    use serde::{Deserialize, Serialize};
+    use zvariant::Type;
+
+    /// Разобранный демоном вызов `AccessDialog`.
+    #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+    pub struct AccessRequest {
+        pub app_id: String,
+        pub parent_window: String,
+        pub title: String,
+        pub subtitle: String,
+        pub body: String,
+        pub modal: bool,
+        /// Пустые подписи — значения по умолчанию на стороне хоста.
+        pub deny_label: String,
+        pub grant_label: String,
+        /// Имя иконки темы (необязательно).
+        pub icon: String,
+        pub choices: Vec<Choice>,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
+    pub struct AccessResult {
+        pub choices: Vec<ChoiceSelection>,
+    }
+}
