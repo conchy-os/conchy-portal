@@ -103,12 +103,11 @@ impl FileChooser {
         let req = build_request(kind, app_id, parent_window, title, &options);
         info!(%handle, kind, app_id = %req.app_id, multiple = req.multiple, directory = req.directory, "FileChooser");
 
-        if self.activate {
-            if let Err(e) = ensure_host(conn, FILES_HOST_BUS_NAME).await {
+        if self.activate
+            && let Err(e) = ensure_host(conn, FILES_HOST_BUS_NAME).await {
                 warn!("FileChooser: нет хоста conchy-files: {e}");
                 return (response::OTHER, Results::new());
             }
-        }
         let host = match FilesHostProxy::new(conn).await {
             Ok(h) => h,
             Err(e) => {

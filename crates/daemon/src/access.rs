@@ -75,12 +75,11 @@ impl Access {
         };
         let req = build_request(app_id, parent_window, title, subtitle, body, &options);
         info!(%handle, app_id = %req.app_id, title = %req.title, "Access");
-        if self.activate {
-            if let Err(e) = ensure_host(conn, SHELL_HOST_BUS_NAME).await {
+        if self.activate
+            && let Err(e) = ensure_host(conn, SHELL_HOST_BUS_NAME).await {
                 warn!("Access: нет хоста conchy-shell, отказываю: {e}");
                 return (response::OTHER, Results::new());
             }
-        }
         let host = match ShellHostProxy::new(conn).await {
             Ok(h) => h,
             Err(e) => {

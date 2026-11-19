@@ -384,11 +384,10 @@ impl ScreenCast {
                     s
                 }
                 None => {
-                    if self.activate {
-                        if let Err(e) = ensure_host(conn, SHELL_HOST_BUS_NAME).await {
+                    if self.activate
+                        && let Err(e) = ensure_host(conn, SHELL_HOST_BUS_NAME).await {
                             return fail(format!("нет хоста conchy-shell: {e}"));
                         }
-                    }
                     let host = match ShellHostProxy::new(conn).await {
                         Ok(h) => h,
                         Err(e) => return fail(format!("прокси к хосту: {e}")),

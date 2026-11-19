@@ -40,6 +40,7 @@ pub fn build_request(app_id: String, parent_window: String, choices: Vec<String>
 
 #[interface(name = "org.freedesktop.impl.portal.AppChooser")]
 impl AppChooser {
+    #[allow(clippy::too_many_arguments)]
     async fn choose_application(
         &self,
         handle: ObjectPath<'_>,
@@ -61,12 +62,11 @@ impl AppChooser {
         };
         let req = build_request(app_id, parent_window, choices, &options);
         info!(%handle, app_id = %req.app_id, content_type = %req.content_type, choices = req.choices.len(), "AppChooser");
-        if self.activate {
-            if let Err(e) = ensure_host(conn, FILES_HOST_BUS_NAME).await {
+        if self.activate
+            && let Err(e) = ensure_host(conn, FILES_HOST_BUS_NAME).await {
                 warn!("AppChooser: нет хоста conchy-files: {e}");
                 return (response::OTHER, Results::new());
             }
-        }
         let host = match FilesHostProxy::new(conn).await {
             Ok(h) => h,
             Err(e) => {
@@ -136,10 +136,13 @@ mod tests {
 
     const IFACE: &str = "org.freedesktop.impl.portal.AppChooser";
 
+    type Updates = Arc<Mutex<Vec<(String, Vec<String>)>>>;
+    type Seen = Arc<Mutex<Vec<(String, AppChooseRequest)>>>;
+
     #[derive(Default)]
     struct MockHost {
-        seen: Arc<Mutex<Vec<(String, AppChooseRequest)>>>,
-        updates: Arc<Mutex<Vec<(String, Vec<String>)>>>,
+        seen: Seen,
+        updates: Updates,
         cancelled: Arc<Mutex<Vec<String>>>,
         block: bool,
         stop: Arc<Notify>,

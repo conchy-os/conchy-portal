@@ -1,8 +1,9 @@
 //! `file://` URI ↔ путь. Пути — байтовые (`OsStr`), не `String`.
 
-use std::ffi::OsString;
-use std::os::unix::ffi::{OsStrExt, OsStringExt};
-use std::path::{Path, PathBuf};
+use std::os::unix::ffi::OsStrExt;
+use std::path::Path;
+#[cfg(test)]
+use std::{ffi::OsString, os::unix::ffi::OsStringExt, path::PathBuf};
 
 fn unreserved(b: u8) -> bool {
     b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'~' | b'/')
@@ -21,6 +22,7 @@ pub fn path_to_uri(p: &Path) -> String {
     out
 }
 
+#[cfg(test)]
 /// `file:///tmp/a%20b.png` → `/tmp/a b.png`. Не `file://` (или с хостом, кроме `localhost`) — `None`.
 pub fn uri_to_path(uri: &str) -> Option<PathBuf> {
     let rest = uri.strip_prefix("file://")?;

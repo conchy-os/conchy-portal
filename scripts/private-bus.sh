@@ -20,6 +20,24 @@ cat > "$PRIVBUS_DIR/services/org.conchy.Portal.ShellHost.service" <<SVC
 Name=org.conchy.Portal.ShellHost
 Exec=/usr/bin/env CONCHY_SHELL_PORTAL_ONLY=1 $shell_bin
 SVC
+# Хранилище разрешений xdp: restore-токены ScreenCast и кеш ответов Access (в хранилище данных
+# приватного XDG_DATA_HOME теста, не в настоящем).
+if [ -x /usr/lib/xdg-permission-store ]; then
+  cat > "$PRIVBUS_DIR/services/org.freedesktop.impl.portal.PermissionStore.service" <<SVC
+[D-BUS Service]
+Name=org.freedesktop.impl.portal.PermissionStore
+Exec=/usr/lib/xdg-permission-store
+SVC
+fi
+# Хранилище разрешений xdp: restore-токены ScreenCast и кеш ответов Access. Пишет в
+# XDG_DATA_HOME теста (e2e-env.sh), не в настоящий.
+if [ -x /usr/lib/xdg-permission-store ]; then
+  cat > "$PRIVBUS_DIR/services/org.freedesktop.impl.portal.PermissionStore.service" <<SVC
+[D-BUS Service]
+Name=org.freedesktop.impl.portal.PermissionStore
+Exec=/usr/lib/xdg-permission-store
+SVC
+fi
 cat > "$PRIVBUS_DIR/bus.conf" <<CONF
 <busconfig>
   <type>session</type>

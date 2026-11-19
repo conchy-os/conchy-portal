@@ -56,9 +56,6 @@ impl RequestGuard {
         ))
     }
 
-    pub fn path(&self) -> &OwnedObjectPath {
-        &self.path
-    }
 }
 
 impl Drop for RequestGuard {

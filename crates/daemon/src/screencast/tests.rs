@@ -1,7 +1,6 @@
 use super::*;
 use crate::testutil::{p2p_pair, proxy};
 use conchy_portal_proto::cast::{CastPickRequest, CastPickResult};
-use futures_util::StreamExt as _;
 use std::sync::atomic::{AtomicU32, Ordering};
 use tokio::sync::Notify;
 use zbus::{fdo, object_server::SignalEmitter};

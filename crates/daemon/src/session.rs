@@ -57,10 +57,6 @@ impl SessionGuard {
         })
     }
 
-    pub fn path(&self) -> &OwnedObjectPath {
-        &self.path
-    }
-
     /// Ждёт `Session.Close()` от фронтенда.
     pub async fn wait_closed(&self) {
         self.closed.notified().await;
