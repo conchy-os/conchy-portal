@@ -533,3 +533,10 @@ _(заполняет исполнитель: дата, фаза, решение/
   - Последняя папка приложения: `~/.local/state/conchy/files-picker.kdl` (`folder "app.id" "/путь"`, не больше 64 записей).
   - Бюджеты: первый кадр при холодном старте (debug-сборка, включая активацию) ~0.77 с; release и тёплый режим не измерялись (release gpui не собирал). e2e `scripts/e2e/filechooser.py` (xdp+демон+conchy-files, клавиши через `hyprctl dispatch hl.dsp.send_shortcut`): выбор с фильтром, Esc, Save, перезапись — зелёный.
   - Ветки: conchy-files `feat/portal-picker`, conchy-wm `feat/portal-conchy` (правила окон + conf), conchy-shot `feat/portal-output`, conchy-config `feat/appearance-schema`. conchy-files зависит от `../conchy-portal/crates/proto` по path.
+- 2026-11-19 · Фаза 4 · Решения:
+  - Вместо переиспользования оверлея `openwith.rs` сделано отдельное окно `AppChooserWindow` (`conchy-files/src/ui/appchooser.rs`, app_id `conchy-files-appchooser`): диалог в `FilesWindow` привязан к файловому списку и путям, а AppChooser работает без них. Общее: `AppsIndex`, `app_icon`, `TextField`, палитра. Порядок списка — как в `choices`, `last_choice` первым (`pick::chooser_apps`, тест).
+  - Хост: `FilesHost.ChooseApp(id, req)`, `UpdateChoices(id, choices)`, `Cancel(id)` — общий Cancel закрывает и пикер файлов, и выбор приложения.
+  - Результат `choice` — id приложения без `.desktop`; пустой выбор при коде 0 демон превращает в отмену.
+  - «Всегда открывать так» не реализовано намеренно (запоминает портал).
+  - `activation_token` возвращается пустым: GPUI 0.2.2 не даёт xdg-activation-токен.
+  - e2e `scripts/e2e/appchooser.py` (прямой вызов impl демона, чтобы xdp не запускал приложения): выбор стрелками, `last_choice` первым, Esc → 1 — зелёный.
