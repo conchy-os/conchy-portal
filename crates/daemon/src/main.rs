@@ -1,6 +1,8 @@
 //! `xdg-desktop-portal-conchy` — headless-маршрутизатор вызовов `xdg-desktop-portal`.
 //! Без GPUI и без UI: отвечает сам (Settings) или передаёт задачу хосту UI.
 
+mod file_chooser;
+mod hosts;
 mod opts;
 mod request;
 mod screenshot;
@@ -37,6 +39,8 @@ async fn main() -> anyhow::Result<()> {
         .context("не удалось зарегистрировать Settings")?
         .serve_at(PORTAL_OBJECT_PATH, screenshot::Screenshot::from_env())
         .context("не удалось зарегистрировать Screenshot")?
+        .serve_at(PORTAL_OBJECT_PATH, file_chooser::FileChooser::new())
+        .context("не удалось зарегистрировать FileChooser")?
         .name(DAEMON_BUS_NAME)
         .context("некорректное имя шины")?
         .build()
