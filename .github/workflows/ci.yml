@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    name: Void glibc (fmt, clippy, test)
+    runs-on: ubuntu-latest
+    container: ghcr.io/void-linux/void-glibc-full:latest
+    steps:
+      - name: Install Rust toolchain and tools
+        shell: sh
+        run: xbps-install -Suy xbps && xbps-install -uy && xbps-install -y rust cargo git bash zstd && git config --global --add safe.directory '*'
+
+      - name: Checkout conchy-portal
+        uses: actions/checkout@v4
+        with:
+          path: conchy-portal
+
+      - name: Checkout conchy-config
+        uses: actions/checkout@v4
+        with:
+          repository: conchy-os/conchy-config
+          path: conchy-config
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            conchy-portal/target
+          key: void-glibc-${{ runner.os }}-${{ hashFiles('conchy-portal/Cargo.lock') }}
+          restore-keys: |
+            void-glibc-${{ runner.os }}-
+
+      - name: Format, clippy, and test
+        working-directory: conchy-portal
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo test --workspace

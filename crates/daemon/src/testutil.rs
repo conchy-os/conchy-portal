@@ -1,7 +1,7 @@
 //! Тестовые хелперы: p2p-соединение zbus без dbus-daemon и без xdp.
 
 use tokio::net::UnixStream;
-use zbus::{Connection, connection::Builder, Guid};
+use zbus::{Connection, Guid, connection::Builder};
 
 /// Возвращает (серверная сторона, клиентская сторона).
 pub async fn p2p_pair() -> (Connection, Connection) {
@@ -18,7 +18,8 @@ pub async fn p2p_pair() -> (Connection, Connection) {
 /// Прокси без destination (p2p-соединение не имеет имён).
 pub async fn proxy(client: &Connection, path: &str, iface: &'static str) -> zbus::Proxy<'static> {
     zbus::proxy::Builder::new(client)
-        .destination("org.conchy.Test").unwrap()
+        .destination("org.conchy.Test")
+        .unwrap()
         .path(path.to_owned())
         .unwrap()
         .interface(iface)

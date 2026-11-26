@@ -6,18 +6,18 @@ mod app_chooser;
 mod file_chooser;
 mod hosts;
 mod inhibit;
-mod opts;
-mod request;
-mod screenshot;
 mod mutter;
 mod notification;
+mod opts;
+mod request;
 mod screencast;
+mod screenshot;
 mod session;
 mod settings;
 mod sources;
-mod uri;
 #[cfg(test)]
 mod testutil;
+mod uri;
 
 use anyhow::Context;
 use conchy_portal_proto::{DAEMON_BUS_NAME, PORTAL_OBJECT_PATH};
@@ -29,7 +29,9 @@ use tracing_subscriber::EnvFilter;
 async fn main() -> anyhow::Result<()> {
     let started = std::time::Instant::now();
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
         .with_writer(std::io::stderr)
         .init();
 
@@ -48,7 +50,10 @@ async fn main() -> anyhow::Result<()> {
         .context("не удалось зарегистрировать Screenshot")?
         .serve_at(PORTAL_OBJECT_PATH, file_chooser::FileChooser::new())
         .context("не удалось зарегистрировать FileChooser")?
-        .serve_at(PORTAL_OBJECT_PATH, app_chooser::AppChooser { activate: true })
+        .serve_at(
+            PORTAL_OBJECT_PATH,
+            app_chooser::AppChooser { activate: true },
+        )
         .context("не удалось зарегистрировать AppChooser")?
         .serve_at(PORTAL_OBJECT_PATH, access::Access { activate: true })
         .context("не удалось зарегистрировать Access")?
@@ -68,7 +73,10 @@ async fn main() -> anyhow::Result<()> {
         .interface::<_, settings::Settings>(PORTAL_OBJECT_PATH)
         .await?;
     {
-        let iface = conn.object_server().interface::<_, notification::Notification>(PORTAL_OBJECT_PATH).await?;
+        let iface = conn
+            .object_server()
+            .interface::<_, notification::Notification>(PORTAL_OBJECT_PATH)
+            .await?;
         let conn = conn.clone();
         let n = notification_iface.clone();
         tokio::spawn(async move {
@@ -77,7 +85,8 @@ async fn main() -> anyhow::Result<()> {
             }
         });
     }
-    let _watcher = sources::spawn_watcher(dir, store, iface).context("не запустить наблюдатель конфигов")?;
+    let _watcher =
+        sources::spawn_watcher(dir, store, iface).context("не запустить наблюдатель конфигов")?;
     info!(
         name = DAEMON_BUS_NAME,
         startup_ms = started.elapsed().as_secs_f64() * 1000.0,

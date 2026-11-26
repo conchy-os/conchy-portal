@@ -36,7 +36,12 @@ type Results = HashMap<String, Value<'static>>;
     default_path = "/org/gnome/Shell/Screenshot"
 )]
 trait ShellScreenshot {
-    fn screenshot(&self, include_cursor: bool, flash: bool, filename: &str) -> zbus::Result<(bool, String)>;
+    fn screenshot(
+        &self,
+        include_cursor: bool,
+        flash: bool,
+        filename: &str,
+    ) -> zbus::Result<(bool, String)>;
     fn pick_color(&self) -> zbus::Result<HashMap<String, OwnedValue>>;
 }
 
@@ -61,8 +66,8 @@ impl Screenshot {
         let shot_bin = std::env::var_os("CONCHY_SHOT_BIN")
             .filter(|v| !v.is_empty())
             .map_or_else(|| PathBuf::from("conchy-shot"), PathBuf::from);
-        let runtime = std::env::var_os("XDG_RUNTIME_DIR")
-            .map_or_else(std::env::temp_dir, PathBuf::from);
+        let runtime =
+            std::env::var_os("XDG_RUNTIME_DIR").map_or_else(std::env::temp_dir, PathBuf::from);
         Self::new(shot_bin, runtime.join("conchy-portal"))
     }
 
@@ -90,7 +95,9 @@ impl Screenshot {
         if let Err(e) = std::fs::create_dir_all(&self.out_dir) {
             return Self::fail(format!("не создать {}: {e}", self.out_dir.display()));
         }
-        let out = self.out_dir.join(format!("screenshot-{}-{id}.png", std::process::id()));
+        let out = self
+            .out_dir
+            .join(format!("screenshot-{}-{id}.png", std::process::id()));
         let status = tokio::process::Command::new(&self.shot_bin)
             .arg("area")
             .arg("--portal-output")
@@ -183,7 +190,9 @@ impl Screenshot {
                     None => Self::fail("wm не вернул color"),
                 },
                 // Пользователь прервал выбор — conchy-wm отвечает ошибкой «no color picked».
-                Err(zbus::Error::MethodError(_, Some(msg), _)) if msg.contains("no color picked") => {
+                Err(zbus::Error::MethodError(_, Some(msg), _))
+                    if msg.contains("no color picked") =>
+                {
                     (response::CANCELLED, Results::new())
                 }
                 Err(e) => Self::fail(format!("conchy-wm: {e}")),
@@ -224,7 +233,12 @@ mod tests {
 
     #[interface(name = "org.gnome.Shell.Screenshot")]
     impl MockWm {
-        async fn screenshot(&self, _c: bool, _f: bool, _n: &str) -> zbus::fdo::Result<(bool, String)> {
+        async fn screenshot(
+            &self,
+            _c: bool,
+            _f: bool,
+            _n: &str,
+        ) -> zbus::fdo::Result<(bool, String)> {
             if self.fail {
                 return Err(zbus::fdo::Error::Failed("internal error".into()));
             }
@@ -235,7 +249,10 @@ mod tests {
                 return Err(zbus::fdo::Error::Failed("no color picked".into()));
             };
             let mut m = HashMap::new();
-            m.insert("color".to_owned(), OwnedValue::try_from(Value::from(c)).unwrap());
+            m.insert(
+                "color".to_owned(),
+                OwnedValue::try_from(Value::from(c)).unwrap(),
+            );
             Ok(m)
         }
     }
@@ -257,33 +274,58 @@ mod tests {
         let (server, client) = p2p_pair().await;
         server
             .object_server()
-            .at(conchy_portal_proto::PORTAL_OBJECT_PATH, Screenshot::new(shot, out_dir))
+            .at(
+                conchy_portal_proto::PORTAL_OBJECT_PATH,
+                Screenshot::new(shot, out_dir),
+            )
             .await
             .unwrap();
-        client.object_server().at("/org/gnome/Shell/Screenshot", wm).await.unwrap();
+        client
+            .object_server()
+            .at("/org/gnome/Shell/Screenshot", wm)
+            .await
+            .unwrap();
         (server, client)
     }
 
     fn opts(interactive: bool) -> Options {
         let mut o = Options::new();
-        o.insert("interactive".into(), OwnedValue::try_from(Value::from(interactive)).unwrap());
+        o.insert(
+            "interactive".into(),
+            OwnedValue::try_from(Value::from(interactive)).unwrap(),
+        );
         o
     }
 
-    async fn call_shot(client: &Connection, handle: &str, o: Options) -> (u32, HashMap<String, OwnedValue>) {
+    async fn call_shot(
+        client: &Connection,
+        handle: &str,
+        o: Options,
+    ) -> (u32, HashMap<String, OwnedValue>) {
         let p = proxy(client, conchy_portal_proto::PORTAL_OBJECT_PATH, IFACE).await;
         let h = ObjectPath::try_from(handle).unwrap();
-        p.call("Screenshot", &(h, "org.test.App", "", o)).await.unwrap()
+        p.call("Screenshot", &(h, "org.test.App", "", o))
+            .await
+            .unwrap()
     }
 
     fn mock(path: &str) -> MockWm {
-        MockWm { path: path.into(), color: Some((0.1, 0.2, 0.3)), fail: false }
+        MockWm {
+            path: path.into(),
+            color: Some((0.1, 0.2, 0.3)),
+            fail: false,
+        }
     }
 
     #[tokio::test]
     async fn non_interactive_uses_wm_path() {
         let d = tempfile::tempdir().unwrap();
-        let (_s, c) = setup(PathBuf::from("/nonexistent"), d.path().into(), mock("/home/u/Pictures/Screenshots/a b.png")).await;
+        let (_s, c) = setup(
+            PathBuf::from("/nonexistent"),
+            d.path().into(),
+            mock("/home/u/Pictures/Screenshots/a b.png"),
+        )
+        .await;
         let (code, res) = call_shot(&c, "/r/1", opts(false)).await;
         assert_eq!(code, 0);
         let uri: String = res["uri"].clone().try_into().unwrap();
@@ -293,7 +335,11 @@ mod tests {
     #[tokio::test]
     async fn wm_failure_is_response_2() {
         let d = tempfile::tempdir().unwrap();
-        let wm = MockWm { path: String::new(), color: None, fail: true };
+        let wm = MockWm {
+            path: String::new(),
+            color: None,
+            fail: true,
+        };
         let (_s, c) = setup(PathBuf::from("/nonexistent"), d.path().into(), wm).await;
         assert_eq!(call_shot(&c, "/r/2", opts(false)).await.0, 2);
     }
@@ -324,7 +370,12 @@ mod tests {
         let shot = fake_shot(d.path(), "exit 7");
         let (_s, c) = setup(shot, d.path().join("out"), mock("")).await;
         assert_eq!(call_shot(&c, "/r/5", opts(true)).await.0, 2);
-        let (_s2, c2) = setup(PathBuf::from("/definitely/missing"), d.path().join("out"), mock("")).await;
+        let (_s2, c2) = setup(
+            PathBuf::from("/definitely/missing"),
+            d.path().join("out"),
+            mock(""),
+        )
+        .await;
         assert_eq!(call_shot(&c2, "/r/6", opts(true)).await.0, 2);
     }
 
@@ -332,7 +383,10 @@ mod tests {
     async fn request_close_kills_shot() {
         let d = tempfile::tempdir().unwrap();
         let pidfile = d.path().join("pid");
-        let shot = fake_shot(d.path(), &format!("echo $$ > {}; exec sleep 30", pidfile.display()));
+        let shot = fake_shot(
+            d.path(),
+            &format!("echo $$ > {}; exec sleep 30", pidfile.display()),
+        );
         let (_s, c) = setup(shot, d.path().join("out"), mock("")).await;
 
         let c2 = c.clone();
@@ -344,13 +398,23 @@ mod tests {
             }
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
-        let pid: i32 = std::fs::read_to_string(&pidfile).unwrap().trim().parse().unwrap();
+        let pid: i32 = std::fs::read_to_string(&pidfile)
+            .unwrap()
+            .trim()
+            .parse()
+            .unwrap();
         let req = proxy(&c, "/r/7", "org.freedesktop.impl.portal.Request").await;
         req.call_method("Close", &()).await.unwrap();
-        let (code, _) = tokio::time::timeout(Duration::from_secs(2), call).await.unwrap().unwrap();
+        let (code, _) = tokio::time::timeout(Duration::from_secs(2), call)
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(code, 1);
         tokio::time::sleep(Duration::from_millis(100)).await;
-        assert!(!std::path::Path::new(&format!("/proc/{pid}")).exists(), "conchy-shot должен быть убит");
+        assert!(
+            !std::path::Path::new(&format!("/proc/{pid}")).exists(),
+            "conchy-shot должен быть убит"
+        );
     }
 
     #[tokio::test]
@@ -359,18 +423,26 @@ mod tests {
         let (_s, c) = setup(PathBuf::from("x"), d.path().into(), mock("")).await;
         let p = proxy(&c, conchy_portal_proto::PORTAL_OBJECT_PATH, IFACE).await;
         let h = ObjectPath::try_from("/r/8").unwrap();
-        let (code, res): (u32, HashMap<String, OwnedValue>) =
-            p.call("PickColor", &(h, "a", "", Options::new())).await.unwrap();
+        let (code, res): (u32, HashMap<String, OwnedValue>) = p
+            .call("PickColor", &(h, "a", "", Options::new()))
+            .await
+            .unwrap();
         assert_eq!(code, 0);
         let rgb: (f64, f64, f64) = res["color"].clone().try_into().unwrap();
         assert_eq!(rgb, (0.1, 0.2, 0.3));
 
-        let wm = MockWm { path: String::new(), color: None, fail: false };
+        let wm = MockWm {
+            path: String::new(),
+            color: None,
+            fail: false,
+        };
         let (_s2, c2) = setup(PathBuf::from("x"), d.path().into(), wm).await;
         let p2 = proxy(&c2, conchy_portal_proto::PORTAL_OBJECT_PATH, IFACE).await;
         let h = ObjectPath::try_from("/r/9").unwrap();
-        let (code, _): (u32, HashMap<String, OwnedValue>) =
-            p2.call("PickColor", &(h, "a", "", Options::new())).await.unwrap();
+        let (code, _): (u32, HashMap<String, OwnedValue>) = p2
+            .call("PickColor", &(h, "a", "", Options::new()))
+            .await
+            .unwrap();
         assert_eq!(code, 1);
     }
 

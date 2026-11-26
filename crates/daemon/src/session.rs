@@ -48,7 +48,9 @@ impl SessionGuard {
             closed: closed.clone(),
         };
         if !server.at(&path, s).await? {
-            return Err(zbus::Error::Failure(format!("session {path} уже существует")));
+            return Err(zbus::Error::Failure(format!(
+                "session {path} уже существует"
+            )));
         }
         Ok(Self {
             server: server.clone(),
@@ -90,10 +92,18 @@ mod tests {
     #[tokio::test]
     async fn close_wakes_waiter_and_unexports() {
         let (server, client) = p2p_pair().await;
-        let path = OwnedObjectPath::try_from("/org/freedesktop/portal/desktop/session/t/1").unwrap();
-        let guard = SessionGuard::new(server.object_server(), path.clone(), 5).await.unwrap();
+        let path =
+            OwnedObjectPath::try_from("/org/freedesktop/portal/desktop/session/t/1").unwrap();
+        let guard = SessionGuard::new(server.object_server(), path.clone(), 5)
+            .await
+            .unwrap();
 
-        let proxy = crate::testutil::proxy(&client, path.as_str(), "org.freedesktop.impl.portal.Session").await;
+        let proxy = crate::testutil::proxy(
+            &client,
+            path.as_str(),
+            "org.freedesktop.impl.portal.Session",
+        )
+        .await;
         let version: u32 = proxy.get_property("version").await.unwrap();
         assert_eq!(version, 5);
 
@@ -111,9 +121,16 @@ mod tests {
     async fn backend_close_emits_signal() {
         let (server, client) = p2p_pair().await;
         let path = OwnedObjectPath::try_from("/s/2").unwrap();
-        let guard = SessionGuard::new(server.object_server(), path.clone(), 1).await.unwrap();
+        let guard = SessionGuard::new(server.object_server(), path.clone(), 1)
+            .await
+            .unwrap();
 
-        let proxy = crate::testutil::proxy(&client, path.as_str(), "org.freedesktop.impl.portal.Session").await;
+        let proxy = crate::testutil::proxy(
+            &client,
+            path.as_str(),
+            "org.freedesktop.impl.portal.Session",
+        )
+        .await;
         let mut sig = proxy.receive_signal("Closed").await.unwrap();
         guard.close_by_backend().await.unwrap();
         let got = tokio::time::timeout(std::time::Duration::from_secs(1), sig.next()).await;

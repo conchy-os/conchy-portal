@@ -24,7 +24,12 @@ pub struct AppChooser {
     pub activate: bool,
 }
 
-pub fn build_request(app_id: String, parent_window: String, choices: Vec<String>, o: &Options) -> AppChooseRequest {
+pub fn build_request(
+    app_id: String,
+    parent_window: String,
+    choices: Vec<String>,
+    o: &Options,
+) -> AppChooseRequest {
     AppChooseRequest {
         app_id,
         parent_window,
@@ -63,10 +68,11 @@ impl AppChooser {
         let req = build_request(app_id, parent_window, choices, &options);
         info!(%handle, app_id = %req.app_id, content_type = %req.content_type, choices = req.choices.len(), "AppChooser");
         if self.activate
-            && let Err(e) = ensure_host(conn, FILES_HOST_BUS_NAME).await {
-                warn!("AppChooser: нет хоста conchy-files: {e}");
-                return (response::OTHER, Results::new());
-            }
+            && let Err(e) = ensure_host(conn, FILES_HOST_BUS_NAME).await
+        {
+            warn!("AppChooser: нет хоста conchy-files: {e}");
+            return (response::OTHER, Results::new());
+        }
         let host = match FilesHostProxy::new(conn).await {
             Ok(h) => h,
             Err(e) => {
@@ -173,10 +179,17 @@ mod tests {
         let (server, client) = p2p_pair().await;
         server
             .object_server()
-            .at(conchy_portal_proto::PORTAL_OBJECT_PATH, AppChooser { activate: false })
+            .at(
+                conchy_portal_proto::PORTAL_OBJECT_PATH,
+                AppChooser { activate: false },
+            )
             .await
             .unwrap();
-        client.object_server().at("/org/conchy/Portal", host).await.unwrap();
+        client
+            .object_server()
+            .at("/org/conchy/Portal", host)
+            .await
+            .unwrap();
         (server, client)
     }
 
@@ -195,7 +208,10 @@ mod tests {
     #[tokio::test]
     async fn choose_returns_choice_and_parses_options() {
         let host = MockHost {
-            result: AppChooseResult { choice: "org.b".into(), activation_token: "tok".into() },
+            result: AppChooseResult {
+                choice: "org.b".into(),
+                activation_token: "tok".into(),
+            },
             ..Default::default()
         };
         let seen = host.seen.clone();
@@ -203,12 +219,18 @@ mod tests {
         let p = proxy(&c, conchy_portal_proto::PORTAL_OBJECT_PATH, IFACE).await;
         let h = ObjectPath::try_from("/r/a1").unwrap();
         let (code, res): (u32, HashMap<String, OwnedValue>) = p
-            .call("ChooseApplication", &(h, "org.app", "", vec!["org.a", "org.b"], opts()))
+            .call(
+                "ChooseApplication",
+                &(h, "org.app", "", vec!["org.a", "org.b"], opts()),
+            )
             .await
             .unwrap();
         assert_eq!(code, 0);
         assert_eq!(String::try_from(res["choice"].clone()).unwrap(), "org.b");
-        assert_eq!(String::try_from(res["activation_token"].clone()).unwrap(), "tok");
+        assert_eq!(
+            String::try_from(res["activation_token"].clone()).unwrap(),
+            "tok"
+        );
         let req = seen.lock().unwrap()[0].1.clone();
         assert_eq!(req.choices, ["org.a", "org.b"]);
         assert_eq!(req.last_choice, "org.b");
@@ -221,21 +243,42 @@ mod tests {
         let (_s, c) = setup(MockHost::default()).await;
         let p = proxy(&c, conchy_portal_proto::PORTAL_OBJECT_PATH, IFACE).await;
         let h = ObjectPath::try_from("/r/a2").unwrap();
-        let (code, res): (u32, HashMap<String, OwnedValue>) =
-            p.call("ChooseApplication", &(h, "a", "", Vec::<String>::new(), Options::new())).await.unwrap();
+        let (code, res): (u32, HashMap<String, OwnedValue>) = p
+            .call(
+                "ChooseApplication",
+                &(h, "a", "", Vec::<String>::new(), Options::new()),
+            )
+            .await
+            .unwrap();
         assert_eq!((code, res.len()), (1, 0));
-        let (_s2, c2) = setup(MockHost { code: 1, ..Default::default() }).await;
+        let (_s2, c2) = setup(MockHost {
+            code: 1,
+            ..Default::default()
+        })
+        .await;
         let p2 = proxy(&c2, conchy_portal_proto::PORTAL_OBJECT_PATH, IFACE).await;
         let h = ObjectPath::try_from("/r/a3").unwrap();
-        let (code, _): (u32, HashMap<String, OwnedValue>) =
-            p2.call("ChooseApplication", &(h, "a", "", Vec::<String>::new(), Options::new())).await.unwrap();
+        let (code, _): (u32, HashMap<String, OwnedValue>) = p2
+            .call(
+                "ChooseApplication",
+                &(h, "a", "", Vec::<String>::new(), Options::new()),
+            )
+            .await
+            .unwrap();
         assert_eq!(code, 1);
     }
 
     #[tokio::test]
     async fn update_choices_forwarded_and_close_cancels() {
-        let host = MockHost { block: true, ..Default::default() };
-        let (updates, cancelled, seen) = (host.updates.clone(), host.cancelled.clone(), host.seen.clone());
+        let host = MockHost {
+            block: true,
+            ..Default::default()
+        };
+        let (updates, cancelled, seen) = (
+            host.updates.clone(),
+            host.cancelled.clone(),
+            host.seen.clone(),
+        );
         let (_s, c) = setup(host).await;
         let c2 = c.clone();
         let call = tokio::spawn(async move {
@@ -256,11 +299,19 @@ mod tests {
         }
         let p = proxy(&c, conchy_portal_proto::PORTAL_OBJECT_PATH, IFACE).await;
         let h = ObjectPath::try_from("/r/a4").unwrap();
-        p.call_method("UpdateChoices", &(h, vec!["x", "y"])).await.unwrap();
-        assert_eq!(updates.lock().unwrap()[0], ("/r/a4".to_owned(), vec!["x".to_owned(), "y".to_owned()]));
+        p.call_method("UpdateChoices", &(h, vec!["x", "y"]))
+            .await
+            .unwrap();
+        assert_eq!(
+            updates.lock().unwrap()[0],
+            ("/r/a4".to_owned(), vec!["x".to_owned(), "y".to_owned()])
+        );
         let req = proxy(&c, "/r/a4", "org.freedesktop.impl.portal.Request").await;
         req.call_method("Close", &()).await.unwrap();
-        let (code, _) = tokio::time::timeout(Duration::from_secs(2), call).await.unwrap().unwrap();
+        let (code, _) = tokio::time::timeout(Duration::from_secs(2), call)
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(code, 1);
         assert_eq!(cancelled.lock().unwrap().as_slice(), ["/r/a4"]);
     }

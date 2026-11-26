@@ -46,7 +46,10 @@ impl Inhibit {
             let _guard = guard; // объект Request живёт, пока держится блокировка
             let held = if flags & FLAG_IDLE != 0 {
                 match ScreenSaverProxy::new(&conn).await {
-                    Ok(p) => match p.inhibit(if app_id.is_empty() { "portal" } else { &app_id }, &reason).await {
+                    Ok(p) => match p
+                        .inhibit(if app_id.is_empty() { "portal" } else { &app_id }, &reason)
+                        .await
+                    {
                         Ok(cookie) => Some((p, cookie)),
                         Err(e) => {
                             warn!("ScreenSaver.Inhibit: {e}");
@@ -63,9 +66,10 @@ impl Inhibit {
             };
             let _ = cancel.await; // Request.Close (или падение демона)
             if let Some((p, cookie)) = held
-                && let Err(e) = p.un_inhibit(cookie).await {
-                    warn!("ScreenSaver.UnInhibit: {e}");
-                }
+                && let Err(e) = p.un_inhibit(cookie).await
+            {
+                warn!("ScreenSaver.UnInhibit: {e}");
+            }
         });
     }
 
@@ -128,7 +132,10 @@ mod tests {
     #[interface(name = "org.freedesktop.ScreenSaver")]
     impl MockSaver {
         async fn inhibit(&self, app: &str, reason: &str) -> u32 {
-            self.log.lock().unwrap().push(format!("inhibit {app} {reason}"));
+            self.log
+                .lock()
+                .unwrap()
+                .push(format!("inhibit {app} {reason}"));
             77
         }
         async fn un_inhibit(&self, cookie: u32) {
@@ -148,17 +155,36 @@ mod tests {
     #[tokio::test]
     async fn idle_inhibit_lives_until_request_close() {
         let (server, client) = p2p_pair().await;
-        server.object_server().at(conchy_portal_proto::PORTAL_OBJECT_PATH, Inhibit).await.unwrap();
+        server
+            .object_server()
+            .at(conchy_portal_proto::PORTAL_OBJECT_PATH, Inhibit)
+            .await
+            .unwrap();
         let saver = MockSaver::default();
         let log = saver.log.clone();
-        client.object_server().at("/org/freedesktop/ScreenSaver", saver).await.unwrap();
+        client
+            .object_server()
+            .at("/org/freedesktop/ScreenSaver", saver)
+            .await
+            .unwrap();
 
-        let p = proxy(&client, conchy_portal_proto::PORTAL_OBJECT_PATH, "org.freedesktop.impl.portal.Inhibit").await;
+        let p = proxy(
+            &client,
+            conchy_portal_proto::PORTAL_OBJECT_PATH,
+            "org.freedesktop.impl.portal.Inhibit",
+        )
+        .await;
         let h = ObjectPath::try_from("/r/i1").unwrap();
-        let opts: Options = [("reason".to_string(), zbus::zvariant::OwnedValue::try_from(zbus::zvariant::Value::from("Playing video")).unwrap())]
-            .into_iter()
-            .collect();
-        p.call_method("Inhibit", &(h, "org.app", "", FLAG_IDLE | 4, opts)).await.unwrap();
+        let opts: Options = [(
+            "reason".to_string(),
+            zbus::zvariant::OwnedValue::try_from(zbus::zvariant::Value::from("Playing video"))
+                .unwrap(),
+        )]
+        .into_iter()
+        .collect();
+        p.call_method("Inhibit", &(h, "org.app", "", FLAG_IDLE | 4, opts))
+            .await
+            .unwrap();
         wait_len(&log, 1).await;
         assert_eq!(log.lock().unwrap()[0], "inhibit org.app Playing video");
 
@@ -172,13 +198,28 @@ mod tests {
     #[tokio::test]
     async fn non_idle_flags_do_not_touch_screensaver() {
         let (server, client) = p2p_pair().await;
-        server.object_server().at(conchy_portal_proto::PORTAL_OBJECT_PATH, Inhibit).await.unwrap();
+        server
+            .object_server()
+            .at(conchy_portal_proto::PORTAL_OBJECT_PATH, Inhibit)
+            .await
+            .unwrap();
         let saver = MockSaver::default();
         let log = saver.log.clone();
-        client.object_server().at("/org/freedesktop/ScreenSaver", saver).await.unwrap();
-        let p = proxy(&client, conchy_portal_proto::PORTAL_OBJECT_PATH, "org.freedesktop.impl.portal.Inhibit").await;
+        client
+            .object_server()
+            .at("/org/freedesktop/ScreenSaver", saver)
+            .await
+            .unwrap();
+        let p = proxy(
+            &client,
+            conchy_portal_proto::PORTAL_OBJECT_PATH,
+            "org.freedesktop.impl.portal.Inhibit",
+        )
+        .await;
         let h = ObjectPath::try_from("/r/i2").unwrap();
-        p.call_method("Inhibit", &(h, "a", "", 1u32 | 4, Options::new())).await.unwrap();
+        p.call_method("Inhibit", &(h, "a", "", 1u32 | 4, Options::new()))
+            .await
+            .unwrap();
         let req = proxy(&client, "/r/i2", "org.freedesktop.impl.portal.Request").await;
         req.call_method("Close", &()).await.unwrap();
         tokio::time::sleep(Duration::from_millis(100)).await;
@@ -188,10 +229,27 @@ mod tests {
     #[tokio::test]
     async fn create_monitor_exports_session() {
         let (server, client) = p2p_pair().await;
-        server.object_server().at(conchy_portal_proto::PORTAL_OBJECT_PATH, Inhibit).await.unwrap();
-        let p = proxy(&client, conchy_portal_proto::PORTAL_OBJECT_PATH, "org.freedesktop.impl.portal.Inhibit").await;
+        server
+            .object_server()
+            .at(conchy_portal_proto::PORTAL_OBJECT_PATH, Inhibit)
+            .await
+            .unwrap();
+        let p = proxy(
+            &client,
+            conchy_portal_proto::PORTAL_OBJECT_PATH,
+            "org.freedesktop.impl.portal.Inhibit",
+        )
+        .await;
         let code: u32 = p
-            .call("CreateMonitor", &(ObjectPath::try_from("/r/m").unwrap(), ObjectPath::try_from("/s/m").unwrap(), "a", ""))
+            .call(
+                "CreateMonitor",
+                &(
+                    ObjectPath::try_from("/r/m").unwrap(),
+                    ObjectPath::try_from("/s/m").unwrap(),
+                    "a",
+                    "",
+                ),
+            )
             .await
             .unwrap();
         assert_eq!(code, 0);

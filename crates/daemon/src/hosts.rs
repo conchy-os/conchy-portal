@@ -3,8 +3,8 @@
 use std::time::Duration;
 
 use conchy_portal_proto::access::{AccessRequest, AccessResult};
-use conchy_portal_proto::cast::{CastPickRequest, CastPickResult};
 use conchy_portal_proto::apps::{AppChooseRequest, AppChooseResult};
+use conchy_portal_proto::cast::{CastPickRequest, CastPickResult};
 use conchy_portal_proto::files::{FilePickRequest, FilePickResult};
 use tracing::{debug, warn};
 use zbus::{Connection, fdo, proxy};
@@ -60,6 +60,10 @@ pub async fn ensure_host(conn: &Connection, name: &'static str) -> Result<(), St
 )]
 pub trait ShellHost {
     fn access(&self, id: &str, req: &AccessRequest) -> zbus::Result<(u32, AccessResult)>;
-    fn pick_cast_sources(&self, id: &str, req: &CastPickRequest) -> zbus::Result<(u32, CastPickResult)>;
+    fn pick_cast_sources(
+        &self,
+        id: &str,
+        req: &CastPickRequest,
+    ) -> zbus::Result<(u32, CastPickResult)>;
     fn cancel(&self, id: &str) -> zbus::Result<()>;
 }

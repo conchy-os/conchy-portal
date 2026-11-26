@@ -69,27 +69,53 @@ pub struct RestoreSource {
 impl RestoreSource {
     fn from_cast(s: &CastSource) -> Self {
         if s.kind == SOURCE_MONITOR {
-            Self { kind: "monitor".into(), connector: s.connector.clone(), app_id: String::new(), title: String::new() }
+            Self {
+                kind: "monitor".into(),
+                connector: s.connector.clone(),
+                app_id: String::new(),
+                title: String::new(),
+            }
         } else {
-            Self { kind: "window".into(), connector: String::new(), app_id: s.app_id.clone(), title: s.title.clone() }
+            Self {
+                kind: "window".into(),
+                connector: String::new(),
+                app_id: s.app_id.clone(),
+                title: s.title.clone(),
+            }
         }
     }
 }
 
 /// `restore_data` `(suv)` → источники. Чужой или битый формат — пустой список (покажем пикер).
 pub fn parse_restore(v: &Value<'_>) -> Vec<RestoreSource> {
-    let Value::Structure(s) = v else { return Vec::new() };
+    let Value::Structure(s) = v else {
+        return Vec::new();
+    };
     let f = s.fields();
-    let [Value::Str(vendor), Value::U32(version), inner] = f else { return Vec::new() };
+    let [Value::Str(vendor), Value::U32(version), inner] = f else {
+        return Vec::new();
+    };
     if vendor.as_str() != RESTORE_VENDOR || *version != RESTORE_VERSION {
         return Vec::new();
     }
-    let Value::Value(inner) = inner else { return Vec::new() };
-    let Value::Array(arr) = &**inner else { return Vec::new() };
+    let Value::Value(inner) = inner else {
+        return Vec::new();
+    };
+    let Value::Array(arr) = &**inner else {
+        return Vec::new();
+    };
     arr.iter()
         .filter_map(|item| {
-            let Value::Structure(s) = item else { return None };
-            let [Value::Str(kind), Value::Str(connector), Value::Str(app_id), Value::Str(title)] = s.fields() else {
+            let Value::Structure(s) = item else {
+                return None;
+            };
+            let [
+                Value::Str(kind),
+                Value::Str(connector),
+                Value::Str(app_id),
+                Value::Str(title),
+            ] = s.fields()
+            else {
                 return None;
             };
             Some(RestoreSource {
@@ -105,13 +131,28 @@ pub fn parse_restore(v: &Value<'_>) -> Vec<RestoreSource> {
 pub fn build_restore(sources: &[RestoreSource]) -> Value<'static> {
     let items: Vec<(String, String, String, String)> = sources
         .iter()
-        .map(|s| (s.kind.clone(), s.connector.clone(), s.app_id.clone(), s.title.clone()))
+        .map(|s| {
+            (
+                s.kind.clone(),
+                s.connector.clone(),
+                s.app_id.clone(),
+                s.title.clone(),
+            )
+        })
         .collect();
-    Value::from((RESTORE_VENDOR.to_string(), RESTORE_VERSION, Value::new(items)))
+    Value::from((
+        RESTORE_VENDOR.to_string(),
+        RESTORE_VERSION,
+        Value::new(items),
+    ))
 }
 
 /// Окно для restore: единственное с этим `app_id` (при нескольких — единственное с тем же заголовком).
-pub fn resolve_window(windows: &HashMap<u64, (String, String)>, app_id: &str, title: &str) -> Option<u64> {
+pub fn resolve_window(
+    windows: &HashMap<u64, (String, String)>,
+    app_id: &str,
+    title: &str,
+) -> Option<u64> {
     let same_app: Vec<_> = windows.iter().filter(|(_, (a, _))| a == app_id).collect();
     match same_app.as_slice() {
         [] => None,
@@ -150,7 +191,10 @@ pub struct ScreenCast {
 
 impl ScreenCast {
     pub fn new(activate: bool) -> Self {
-        Self { sessions: Arc::default(), activate }
+        Self {
+            sessions: Arc::default(),
+            activate,
+        }
     }
 
     fn with<R>(&self, path: &OwnedObjectPath, f: impl FnOnce(&mut CastSession) -> R) -> Option<R> {
@@ -169,8 +213,13 @@ async fn open_streams(
     sources: &[CastSource],
     cursor_mode: u32,
 ) -> Result<(MutterSessionProxy<'static>, Vec<StreamInfo>), String> {
-    let sc = MutterScreenCastProxy::new(conn).await.map_err(|e| format!("нет Mutter.ScreenCast: {e}"))?;
-    let path = sc.create_session(HashMap::new()).await.map_err(|e| format!("CreateSession: {e}"))?;
+    let sc = MutterScreenCastProxy::new(conn)
+        .await
+        .map_err(|e| format!("нет Mutter.ScreenCast: {e}"))?;
+    let path = sc
+        .create_session(HashMap::new())
+        .await
+        .map_err(|e| format!("CreateSession: {e}"))?;
     let session = MutterSessionProxy::builder(conn)
         .path(path)
         .map_err(|e| e.to_string())?
@@ -211,10 +260,16 @@ async fn record_all(
             .await
             .map_err(|e| e.to_string())?;
         // Подписка ДО Start: иначе сигнал можно пропустить.
-        let added = stream.receive_pipe_wire_stream_added().await.map_err(|e| e.to_string())?;
+        let added = stream
+            .receive_pipe_wire_stream_added()
+            .await
+            .map_err(|e| e.to_string())?;
         streams.push((src.kind, stream, added));
     }
-    session.start().await.map_err(|e| format!("Session.Start: {e}"))?;
+    session
+        .start()
+        .await
+        .map_err(|e| format!("Session.Start: {e}"))?;
     let mut out = Vec::new();
     for (kind, stream, mut added) in streams {
         let signal = tokio::time::timeout(STREAM_TIMEOUT, added.next())
@@ -225,20 +280,31 @@ async fn record_all(
         let params = stream.parameters().await.unwrap_or_default();
         let pair = |k: &str| -> Option<(i32, i32)> {
             let v = params.get(k)?;
-            let Value::Structure(s) = &**v else { return None };
+            let Value::Structure(s) = &**v else {
+                return None;
+            };
             match s.fields() {
                 [Value::I32(a), Value::I32(b)] => Some((*a, *b)),
                 _ => None,
             }
         };
-        out.push(StreamInfo { node_id, position: pair("position"), size: pair("size"), source_type: kind });
+        out.push(StreamInfo {
+            node_id,
+            position: pair("position"),
+            size: pair("size"),
+            source_type: kind,
+        });
     }
     Ok(out)
 }
 
 impl ScreenCast {
     /// Источники из restore-токена, если все ещё существуют.
-    async fn restore_sources(&self, conn: &Connection, restore: &[RestoreSource]) -> Option<Vec<CastSource>> {
+    async fn restore_sources(
+        &self,
+        conn: &Connection,
+        restore: &[RestoreSource],
+    ) -> Option<Vec<CastSource>> {
         if restore.is_empty() {
             return None;
         }
@@ -246,16 +312,25 @@ impl ScreenCast {
         let mut out = Vec::new();
         for r in restore {
             if r.kind == "monitor" {
-                out.push(CastSource { kind: SOURCE_MONITOR, connector: r.connector.clone(), ..Default::default() });
+                out.push(CastSource {
+                    kind: SOURCE_MONITOR,
+                    connector: r.connector.clone(),
+                    ..Default::default()
+                });
             } else {
                 if windows.is_none() {
                     let proxy = ShellIntrospectProxy::new(conn).await.ok()?;
                     let raw = proxy.get_windows().await.ok()?;
-                    let text = |m: &HashMap<String, OwnedValue>, k: &str| match m.get(k).map(|v| &**v) {
-                        Some(Value::Str(s)) => s.to_string(),
-                        _ => String::new(),
-                    };
-                    windows = Some(raw.iter().map(|(id, m)| (*id, (text(m, "app-id"), text(m, "title")))).collect());
+                    let text =
+                        |m: &HashMap<String, OwnedValue>, k: &str| match m.get(k).map(|v| &**v) {
+                            Some(Value::Str(s)) => s.to_string(),
+                            _ => String::new(),
+                        };
+                    windows = Some(
+                        raw.iter()
+                            .map(|(id, m)| (*id, (text(m, "app-id"), text(m, "title"))))
+                            .collect(),
+                    );
                 }
                 let id = resolve_window(windows.as_ref()?, &r.app_id, &r.title)?;
                 out.push(CastSource {
@@ -295,7 +370,12 @@ impl ScreenCast {
         if let Ok(mut map) = self.sessions.lock() {
             map.insert(
                 session_handle.clone(),
-                CastSession { selection: Selection::default(), mutter: None, backend_closed: backend_closed.clone(), started: false },
+                CastSession {
+                    selection: Selection::default(),
+                    mutter: None,
+                    backend_closed: backend_closed.clone(),
+                    started: false,
+                },
             );
         }
         info!(session = %session_handle, app_id, "ScreenCast.CreateSession");
@@ -310,7 +390,11 @@ impl ScreenCast {
                     let _ = guard.close_by_backend().await;
                 }
             }
-            let mutter = sessions.lock().ok().and_then(|mut m| m.remove(&path)).and_then(|s| s.mutter);
+            let mutter = sessions
+                .lock()
+                .ok()
+                .and_then(|mut m| m.remove(&path))
+                .and_then(|s| s.mutter);
             if let Some(m) = mutter {
                 let _ = m.stop().await;
             }
@@ -330,14 +414,20 @@ impl ScreenCast {
         options: Options,
         #[zbus(object_server)] server: &ObjectServer,
     ) -> (u32, Results) {
-        let (_guard, _cancel) = match RequestGuard::new(server, OwnedObjectPath::from(handle)).await {
+        let (_guard, _cancel) = match RequestGuard::new(server, OwnedObjectPath::from(handle)).await
+        {
             Ok(g) => g,
             Err(e) => return fail(e),
         };
         let path = OwnedObjectPath::from(session_handle);
-        let restore = crate::opts::get_value(&options, "restore_data").map(parse_restore).unwrap_or_default();
+        let restore = crate::opts::get_value(&options, "restore_data")
+            .map(parse_restore)
+            .unwrap_or_default();
         let sel = Selection {
-            types: get_u32(&options, "types").filter(|t| *t != 0).unwrap_or(SOURCE_MONITOR) & AVAILABLE_SOURCE_TYPES,
+            types: get_u32(&options, "types")
+                .filter(|t| *t != 0)
+                .unwrap_or(SOURCE_MONITOR)
+                & AVAILABLE_SOURCE_TYPES,
             multiple: get_bool(&options, "multiple").unwrap_or(false),
             cursor_mode: get_u32(&options, "cursor_mode").unwrap_or(1),
             persist_mode: get_u32(&options, "persist_mode").unwrap_or(0).min(2),
@@ -367,7 +457,8 @@ impl ScreenCast {
             Ok(g) => g,
             Err(e) => return fail(e),
         };
-        let Some((selection, already)) = self.with(&path, |s| (s.selection.clone(), s.started)) else {
+        let Some((selection, already)) = self.with(&path, |s| (s.selection.clone(), s.started))
+        else {
             return fail(format!("нет сессии {path}"));
         };
         if already {
@@ -385,9 +476,10 @@ impl ScreenCast {
                 }
                 None => {
                     if self.activate
-                        && let Err(e) = ensure_host(conn, SHELL_HOST_BUS_NAME).await {
-                            return fail(format!("нет хоста conchy-shell: {e}"));
-                        }
+                        && let Err(e) = ensure_host(conn, SHELL_HOST_BUS_NAME).await
+                    {
+                        return fail(format!("нет хоста conchy-shell: {e}"));
+                    }
                     let host = match ShellHostProxy::new(conn).await {
                         Ok(h) => h,
                         Err(e) => return fail(format!("прокси к хосту: {e}")),
@@ -400,7 +492,11 @@ impl ScreenCast {
                     };
                     match host.pick_cast_sources(&id, &req).await {
                         Ok((code, res)) if code == response::OK && !res.sources.is_empty() => {
-                            if selection.multiple { res.sources } else { res.sources.into_iter().take(1).collect() }
+                            if selection.multiple {
+                                res.sources
+                            } else {
+                                res.sources.into_iter().take(1).collect()
+                            }
                         }
                         Ok((code, _)) if code != response::OK => return (code, Results::new()),
                         Ok(_) => return (response::CANCELLED, Results::new()),
@@ -410,25 +506,28 @@ impl ScreenCast {
             };
 
             // 2. Потоки в wm.
-            let (mutter, streams) = match open_streams(conn, &sources, selection.cursor_mode).await {
+            let (mutter, streams) = match open_streams(conn, &sources, selection.cursor_mode).await
+            {
                 Ok(v) => v,
                 Err(e) => return fail(e),
             };
 
             // 3. Сессия wm закрылась сама — сообщим порталу.
             let backend_closed = self.with(&path, |s| s.backend_closed.clone());
-            if let (Ok(mut closed), Some(notify)) = (mutter.receive_closed().await, backend_closed) {
+            if let (Ok(mut closed), Some(notify)) = (mutter.receive_closed().await, backend_closed)
+            {
                 tokio::spawn(async move {
                     if closed.next().await.is_some() {
                         notify.notify_one();
                     }
                 });
             }
-            if self.with(&path, |s| {
-                s.mutter = Some(mutter.clone());
-                s.started = true;
-            })
-            .is_none()
+            if self
+                .with(&path, |s| {
+                    s.mutter = Some(mutter.clone());
+                    s.started = true;
+                })
+                .is_none()
             {
                 // Сессию успели закрыть, пока открывались потоки.
                 let _ = mutter.stop().await;
@@ -448,7 +547,11 @@ impl ScreenCast {
                         d.insert("size".into(), Value::from(sz));
                     }
                     d.insert("source_type".into(), Value::from(s.source_type));
-                    let sid = if src.kind == SOURCE_WINDOW { format!("window:{}", src.window_id) } else { format!("monitor:{}", src.connector) };
+                    let sid = if src.kind == SOURCE_WINDOW {
+                        format!("window:{}", src.window_id)
+                    } else {
+                        format!("monitor:{}", src.connector)
+                    };
                     d.insert("id".into(), Value::from(sid));
                     (s.node_id, d)
                 })
@@ -456,7 +559,8 @@ impl ScreenCast {
             let mut r = Results::new();
             r.insert("streams".into(), Value::from(stream_values));
             if selection.persist_mode > 0 {
-                let restore: Vec<RestoreSource> = sources.iter().map(RestoreSource::from_cast).collect();
+                let restore: Vec<RestoreSource> =
+                    sources.iter().map(RestoreSource::from_cast).collect();
                 r.insert("persist_mode".into(), Value::from(selection.persist_mode));
                 r.insert("restore_data".into(), build_restore(&restore));
             }

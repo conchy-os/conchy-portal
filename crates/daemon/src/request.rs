@@ -55,7 +55,6 @@ impl RequestGuard {
             rx,
         ))
     }
-
 }
 
 impl Drop for RequestGuard {
@@ -79,15 +78,25 @@ mod tests {
     #[tokio::test]
     async fn export_close_and_unexport() {
         let (server, client) = p2p_pair().await;
-        let handle = OwnedObjectPath::try_from("/org/freedesktop/portal/desktop/request/t/1").unwrap();
+        let handle =
+            OwnedObjectPath::try_from("/org/freedesktop/portal/desktop/request/t/1").unwrap();
 
         let (guard, cancel) = RequestGuard::new(server.object_server(), handle.clone())
             .await
             .unwrap();
         // Повторный экспорт на тот же путь — ошибка.
-        assert!(RequestGuard::new(server.object_server(), handle.clone()).await.is_err());
+        assert!(
+            RequestGuard::new(server.object_server(), handle.clone())
+                .await
+                .is_err()
+        );
 
-        let proxy = crate::testutil::proxy(&client, handle.as_str(), "org.freedesktop.impl.portal.Request").await;
+        let proxy = crate::testutil::proxy(
+            &client,
+            handle.as_str(),
+            "org.freedesktop.impl.portal.Request",
+        )
+        .await;
         proxy.call_method("Close", &()).await.unwrap();
         assert!(cancel.await.is_ok(), "Close должен будить cancel-канал");
 
@@ -101,7 +110,9 @@ mod tests {
     async fn drop_without_close_cancels_nothing() {
         let (server, _client) = p2p_pair().await;
         let handle = OwnedObjectPath::try_from("/r/2").unwrap();
-        let (guard, cancel) = RequestGuard::new(server.object_server(), handle).await.unwrap();
+        let (guard, cancel) = RequestGuard::new(server.object_server(), handle)
+            .await
+            .unwrap();
         drop(guard);
         // Sender живёт внутри снятого объекта и дропается — получатель видит Err.
         let r = tokio::time::timeout(std::time::Duration::from_secs(1), cancel).await;

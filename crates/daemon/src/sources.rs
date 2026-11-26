@@ -53,7 +53,8 @@ pub fn load_all(dir: &Path, prev: &Map) -> Map {
     };
 
     // theme.kdl + appearance.kdl
-    const APPEARANCE_KEYS: [&str; 4] = ["color-scheme", "accent-color", "contrast", "reduced-motion"];
+    const APPEARANCE_KEYS: [&str; 4] =
+        ["color-scheme", "accent-color", "contrast", "reduced-motion"];
     let theme = read(dir, "theme.kdl").transpose();
     let overrides = read(dir, "appearance.kdl").transpose();
     let wm_text = read(dir, "wm.kdl").transpose();
@@ -67,7 +68,10 @@ pub fn load_all(dir: &Path, prev: &Map) -> Map {
                         .ok()
                         .and_then(|t| t.as_deref())
                         .is_some_and(animations_off);
-                    out.insert(key(NS_APPEARANCE, "color-scheme"), Val::U32(a.color_scheme.portal_value()));
+                    out.insert(
+                        key(NS_APPEARANCE, "color-scheme"),
+                        Val::U32(a.color_scheme.portal_value()),
+                    );
                     out.insert(key(NS_APPEARANCE, "accent-color"), Val::Rgb(a.accent));
                     out.insert(key(NS_APPEARANCE, "contrast"), Val::U32(a.contrast));
                     out.insert(
@@ -87,7 +91,11 @@ pub fn load_all(dir: &Path, prev: &Map) -> Map {
             }
         }
         (t, o) => {
-            warn!("не прочитать theme.kdl/appearance.kdl: {:?} {:?}", t.err(), o.err());
+            warn!(
+                "не прочитать theme.kdl/appearance.kdl: {:?} {:?}",
+                t.err(),
+                o.err()
+            );
             keep(&mut out, NS_APPEARANCE, &APPEARANCE_KEYS);
             keep(&mut out, NS_GNOME_INTERFACE, &["color-scheme"]);
         }
@@ -131,12 +139,20 @@ pub fn load_all(dir: &Path, prev: &Map) -> Map {
             }
             Err(e) => {
                 warn!("wm.kdl: {e}; оставляю прежние значения курсора");
-                keep(&mut out, NS_GNOME_INTERFACE, &["cursor-theme", "cursor-size"]);
+                keep(
+                    &mut out,
+                    NS_GNOME_INTERFACE,
+                    &["cursor-theme", "cursor-size"],
+                );
             }
         },
         Err(e) => {
             warn!("не прочитать wm.kdl: {e}");
-            keep(&mut out, NS_GNOME_INTERFACE, &["cursor-theme", "cursor-size"]);
+            keep(
+                &mut out,
+                NS_GNOME_INTERFACE,
+                &["cursor-theme", "cursor-size"],
+            );
         }
     }
     out
@@ -242,7 +258,11 @@ mod tests {
     fn loads_theme_files_and_wm() {
         let d = tempfile::tempdir().unwrap();
         fs::write(d.path().join("theme.kdl"), DARK).unwrap();
-        fs::write(d.path().join("files.kdl"), "theme {\n icon-theme \"Papirus\"\n}\n").unwrap();
+        fs::write(
+            d.path().join("files.kdl"),
+            "theme {\n icon-theme \"Papirus\"\n}\n",
+        )
+        .unwrap();
         fs::write(
             d.path().join("wm.kdl"),
             "cursor {\n xcursor-theme \"Bibata\"\n xcursor-size 32\n}\nanimations {\n off\n}\n",
@@ -251,10 +271,22 @@ mod tests {
         let m = load_all(d.path(), &Map::new());
         assert_eq!(get(&m, NS_APPEARANCE, "color-scheme"), Some(Val::U32(1)));
         assert_eq!(get(&m, NS_APPEARANCE, "reduced-motion"), Some(Val::U32(1)));
-        assert_eq!(get(&m, NS_GNOME_INTERFACE, "color-scheme"), Some(Val::Str("prefer-dark".into())));
-        assert_eq!(get(&m, NS_GNOME_INTERFACE, "icon-theme"), Some(Val::Str("Papirus".into())));
-        assert_eq!(get(&m, NS_GNOME_INTERFACE, "cursor-theme"), Some(Val::Str("Bibata".into())));
-        assert_eq!(get(&m, NS_GNOME_INTERFACE, "cursor-size"), Some(Val::I32(32)));
+        assert_eq!(
+            get(&m, NS_GNOME_INTERFACE, "color-scheme"),
+            Some(Val::Str("prefer-dark".into()))
+        );
+        assert_eq!(
+            get(&m, NS_GNOME_INTERFACE, "icon-theme"),
+            Some(Val::Str("Papirus".into()))
+        );
+        assert_eq!(
+            get(&m, NS_GNOME_INTERFACE, "cursor-theme"),
+            Some(Val::Str("Bibata".into()))
+        );
+        assert_eq!(
+            get(&m, NS_GNOME_INTERFACE, "cursor-size"),
+            Some(Val::I32(32))
+        );
     }
 
     #[test]
@@ -264,8 +296,14 @@ mod tests {
         let first = load_all(d.path(), &Map::new());
         fs::write(d.path().join("theme.kdl"), "base16 {{{ ").unwrap();
         let second = load_all(d.path(), &first);
-        assert_eq!(get(&second, NS_APPEARANCE, "color-scheme"), Some(Val::U32(1)));
-        assert_eq!(get(&second, NS_APPEARANCE, "accent-color"), get(&first, NS_APPEARANCE, "accent-color"));
+        assert_eq!(
+            get(&second, NS_APPEARANCE, "color-scheme"),
+            Some(Val::U32(1))
+        );
+        assert_eq!(
+            get(&second, NS_APPEARANCE, "accent-color"),
+            get(&first, NS_APPEARANCE, "accent-color")
+        );
     }
 
     #[test]
@@ -289,7 +327,10 @@ mod tests {
         let (server, client) = p2p_pair().await;
         server
             .object_server()
-            .at(conchy_portal_proto::PORTAL_OBJECT_PATH, Settings::new(store.clone()))
+            .at(
+                conchy_portal_proto::PORTAL_OBJECT_PATH,
+                Settings::new(store.clone()),
+            )
             .await
             .unwrap();
         let iface = server
@@ -308,12 +349,24 @@ mod tests {
         let mut sig = p.receive_signal("SettingChanged").await.unwrap();
 
         // ReadAll / Read поверх шины.
-        let all: std::collections::HashMap<String, std::collections::HashMap<String, zbus::zvariant::OwnedValue>> =
-            p.call("ReadAll", &(vec!["org.freedesktop.*".to_owned()],)).await.unwrap();
+        let all: std::collections::HashMap<
+            String,
+            std::collections::HashMap<String, zbus::zvariant::OwnedValue>,
+        > = p
+            .call("ReadAll", &(vec!["org.freedesktop.*".to_owned()],))
+            .await
+            .unwrap();
         assert_eq!(all.len(), 1);
-        let cs: zbus::zvariant::OwnedValue = p.call("Read", &(NS_APPEARANCE, "color-scheme")).await.unwrap();
+        let cs: zbus::zvariant::OwnedValue = p
+            .call("Read", &(NS_APPEARANCE, "color-scheme"))
+            .await
+            .unwrap();
         assert_eq!(u32::try_from(cs).unwrap(), 1);
-        assert!(p.call_method("Read", &(NS_APPEARANCE, "nope")).await.is_err());
+        assert!(
+            p.call_method("Read", &(NS_APPEARANCE, "nope"))
+                .await
+                .is_err()
+        );
 
         let t0 = std::time::Instant::now();
         fs::write(d.path().join("theme.kdl.tmp"), LIGHT).unwrap();
@@ -322,7 +375,8 @@ mod tests {
             .await
             .expect("SettingChanged не пришёл")
             .unwrap();
-        let (ns, k, _v): (String, String, zbus::zvariant::OwnedValue) = msg.body().deserialize().unwrap();
+        let (ns, k, _v): (String, String, zbus::zvariant::OwnedValue) =
+            msg.body().deserialize().unwrap();
         eprintln!("SettingChanged за {:?}", t0.elapsed());
         assert_eq!(ns, NS_APPEARANCE);
         assert!(t0.elapsed() < Duration::from_millis(500));

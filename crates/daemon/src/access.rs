@@ -45,7 +45,9 @@ pub fn build_request(
         deny_label: get_str(o, "deny_label").unwrap_or_default(),
         grant_label: get_str(o, "grant_label").unwrap_or_default(),
         icon: get_str(o, "icon").unwrap_or_default(),
-        choices: opts::get_value(o, "choices").map(opts::parse_choices).unwrap_or_default(),
+        choices: opts::get_value(o, "choices")
+            .map(opts::parse_choices)
+            .unwrap_or_default(),
     }
 }
 
@@ -76,10 +78,11 @@ impl Access {
         let req = build_request(app_id, parent_window, title, subtitle, body, &options);
         info!(%handle, app_id = %req.app_id, title = %req.title, "Access");
         if self.activate
-            && let Err(e) = ensure_host(conn, SHELL_HOST_BUS_NAME).await {
-                warn!("Access: нет хоста conchy-shell, отказываю: {e}");
-                return (response::OTHER, Results::new());
-            }
+            && let Err(e) = ensure_host(conn, SHELL_HOST_BUS_NAME).await
+        {
+            warn!("Access: нет хоста conchy-shell, отказываю: {e}");
+            return (response::OTHER, Results::new());
+        }
         let host = match ShellHostProxy::new(conn).await {
             Ok(h) => h,
             Err(e) => {
@@ -142,7 +145,11 @@ mod tests {
 
     #[interface(name = "org.conchy.Portal.ShellHost")]
     impl MockShell {
-        async fn access(&self, id: &str, req: AccessRequest) -> zbus::fdo::Result<(u32, AccessResult)> {
+        async fn access(
+            &self,
+            id: &str,
+            req: AccessRequest,
+        ) -> zbus::fdo::Result<(u32, AccessResult)> {
             self.seen.lock().unwrap().push((id.to_owned(), req));
             if self.fail {
                 return Err(zbus::fdo::Error::Failed("shell crashed".into()));
@@ -151,7 +158,15 @@ mod tests {
                 self.stop.notified().await;
                 return Ok((1, AccessResult::default()));
             }
-            Ok((self.code, AccessResult { choices: vec![ChoiceSelection { id: "remember".into(), value: "true".into() }] }))
+            Ok((
+                self.code,
+                AccessResult {
+                    choices: vec![ChoiceSelection {
+                        id: "remember".into(),
+                        value: "true".into(),
+                    }],
+                },
+            ))
         }
         async fn cancel(&self, id: &str) {
             self.cancelled.lock().unwrap().push(id.to_owned());
@@ -161,8 +176,19 @@ mod tests {
 
     async fn setup(host: MockShell) -> (Connection, Connection) {
         let (server, client) = p2p_pair().await;
-        server.object_server().at(conchy_portal_proto::PORTAL_OBJECT_PATH, Access { activate: false }).await.unwrap();
-        client.object_server().at("/org/conchy/Portal", host).await.unwrap();
+        server
+            .object_server()
+            .at(
+                conchy_portal_proto::PORTAL_OBJECT_PATH,
+                Access { activate: false },
+            )
+            .await
+            .unwrap();
+        client
+            .object_server()
+            .at("/org/conchy/Portal", host)
+            .await
+            .unwrap();
         (server, client)
     }
 
@@ -173,7 +199,12 @@ mod tests {
             ("icon", Value::from("camera-web-symbolic")),
             (
                 "choices",
-                Value::from(vec![("remember".to_owned(), "Remember".to_owned(), Vec::<(String, String)>::new(), "false".to_owned())]),
+                Value::from(vec![(
+                    "remember".to_owned(),
+                    "Remember".to_owned(),
+                    Vec::<(String, String)>::new(),
+                    "false".to_owned(),
+                )]),
             ),
         ]
         .into_iter()
@@ -189,48 +220,84 @@ mod tests {
         let p = proxy(&c, conchy_portal_proto::PORTAL_OBJECT_PATH, IFACE).await;
         let h = ObjectPath::try_from("/r/x1").unwrap();
         let (code, res): (u32, HashMap<String, OwnedValue>) = p
-            .call("AccessDialog", &(h, "org.app", "wayland:1", "Allow camera?", "App wants the camera", "body", options()))
+            .call(
+                "AccessDialog",
+                &(
+                    h,
+                    "org.app",
+                    "wayland:1",
+                    "Allow camera?",
+                    "App wants the camera",
+                    "body",
+                    options(),
+                ),
+            )
             .await
             .unwrap();
         assert_eq!(code, 0);
         let choices: Vec<(String, String)> = res["choices"].clone().try_into().unwrap();
         assert_eq!(choices, vec![("remember".to_owned(), "true".to_owned())]);
         let req = seen.lock().unwrap()[0].1.clone();
-        assert_eq!((req.title.as_str(), req.subtitle.as_str(), req.grant_label.as_str()), ("Allow camera?", "App wants the camera", "Allow"));
+        assert_eq!(
+            (
+                req.title.as_str(),
+                req.subtitle.as_str(),
+                req.grant_label.as_str()
+            ),
+            ("Allow camera?", "App wants the camera", "Allow")
+        );
         assert_eq!(req.icon, "camera-web-symbolic");
         assert_eq!(req.choices[0].id, "remember");
     }
 
     #[tokio::test]
     async fn deny_and_host_failure() {
-        let (_s, c) = setup(MockShell { code: 1, ..Default::default() }).await;
+        let (_s, c) = setup(MockShell {
+            code: 1,
+            ..Default::default()
+        })
+        .await;
         let p = proxy(&c, conchy_portal_proto::PORTAL_OBJECT_PATH, IFACE).await;
         let h = ObjectPath::try_from("/r/x2").unwrap();
-        let (code, res): (u32, HashMap<String, OwnedValue>) =
-            p.call("AccessDialog", &(h, "a", "", "t", "s", "b", Options::new())).await.unwrap();
+        let (code, res): (u32, HashMap<String, OwnedValue>) = p
+            .call("AccessDialog", &(h, "a", "", "t", "s", "b", Options::new()))
+            .await
+            .unwrap();
         assert_eq!((code, res.len()), (1, 0));
 
         // Шелл упал → отказ (2), а не молчаливое разрешение.
-        let (_s2, c2) = setup(MockShell { fail: true, ..Default::default() }).await;
+        let (_s2, c2) = setup(MockShell {
+            fail: true,
+            ..Default::default()
+        })
+        .await;
         let p2 = proxy(&c2, conchy_portal_proto::PORTAL_OBJECT_PATH, IFACE).await;
         let h = ObjectPath::try_from("/r/x3").unwrap();
-        let (code, _): (u32, HashMap<String, OwnedValue>) =
-            p2.call("AccessDialog", &(h, "a", "", "t", "s", "b", Options::new())).await.unwrap();
+        let (code, _): (u32, HashMap<String, OwnedValue>) = p2
+            .call("AccessDialog", &(h, "a", "", "t", "s", "b", Options::new()))
+            .await
+            .unwrap();
         assert_eq!(code, 2);
     }
 
     #[tokio::test]
     async fn request_close_cancels_dialog() {
-        let host = MockShell { block: true, ..Default::default() };
+        let host = MockShell {
+            block: true,
+            ..Default::default()
+        };
         let (cancelled, seen) = (host.cancelled.clone(), host.seen.clone());
         let (_s, c) = setup(host).await;
         let c2 = c.clone();
         let call = tokio::spawn(async move {
             let p = proxy(&c2, conchy_portal_proto::PORTAL_OBJECT_PATH, IFACE).await;
             let h = ObjectPath::try_from("/r/x4").unwrap();
-            p.call::<_, _, (u32, HashMap<String, OwnedValue>)>("AccessDialog", &(h, "a", "", "t", "s", "b", Options::new()))
-                .await
-                .unwrap()
+            p.call::<_, _, (u32, HashMap<String, OwnedValue>)>(
+                "AccessDialog",
+                &(h, "a", "", "t", "s", "b", Options::new()),
+            )
+            .await
+            .unwrap()
         });
         for _ in 0..100 {
             if !seen.lock().unwrap().is_empty() {
@@ -240,7 +307,10 @@ mod tests {
         }
         let req = proxy(&c, "/r/x4", "org.freedesktop.impl.portal.Request").await;
         req.call_method("Close", &()).await.unwrap();
-        let (code, _) = tokio::time::timeout(Duration::from_secs(2), call).await.unwrap().unwrap();
+        let (code, _) = tokio::time::timeout(Duration::from_secs(2), call)
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(code, 1);
         assert_eq!(cancelled.lock().unwrap().as_slice(), ["/r/x4"]);
     }

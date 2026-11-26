@@ -90,7 +90,10 @@ pub fn ns_matches(patterns: &[String], ns: &str) -> bool {
 
 #[interface(name = "org.freedesktop.impl.portal.Settings")]
 impl Settings {
-    async fn read_all(&self, namespaces: Vec<String>) -> HashMap<String, HashMap<String, Value<'static>>> {
+    async fn read_all(
+        &self,
+        namespaces: Vec<String>,
+    ) -> HashMap<String, HashMap<String, Value<'static>>> {
         let mut out: HashMap<String, HashMap<String, Value<'static>>> = HashMap::new();
         for ((ns, key), val) in self.store.snapshot() {
             if ns_matches(&namespaces, &ns) {
